@@ -74,6 +74,7 @@ export default function PINEntryScreen() {
           });
           const data = await res.json();
           if (data.success) {
+            sessionStorage.setItem('pin_authenticated', 'true');
             router.push('/dashboard');
           } else {
             triggerError('Failed to setup PIN');
@@ -88,6 +89,7 @@ export default function PINEntryScreen() {
         const data = await res.json();
         
         if (data.success) {
+          sessionStorage.setItem('pin_authenticated', 'true');
           router.push('/dashboard');
         } else {
           triggerError('Wrong PIN');
