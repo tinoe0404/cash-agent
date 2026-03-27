@@ -1,0 +1,8 @@
+src/app/api/pin/setup/route.ts(2,20): error TS2307: Cannot find module '@/db' or its corresponding type declarations.
+src/app/api/pin/setup/route.ts(3,26): error TS2307: Cannot find module '@/db/schema' or its corresponding type declarations.
+src/app/api/pin/verify/route.ts(2,20): error TS2307: Cannot find module '@/db' or its corresponding type declarations.
+src/app/api/pin/verify/route.ts(3,26): error TS2307: Cannot find module '@/db/schema' or its corresponding type declarations.
+src/app/api/transactions/[id]/void/route.ts(2,20): error TS2307: Cannot find module '@/db' or its corresponding type declarations.
+src/app/api/transactions/[id]/void/route.ts(3,30): error TS2307: Cannot find module '@/db/schema' or its corresponding type declarations.
+src/app/api/transactions/route.ts(2,20): error TS2307: Cannot find module '@/db' or its corresponding type declarations.
+src/app/api/transactions/route.ts(3,30): error TS2307: Cannot find module '@/db/schema' or its corresponding type declarations.
