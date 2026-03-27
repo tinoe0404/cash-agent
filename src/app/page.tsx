@@ -2,15 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, Delete } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 
 type Mode = 'loading' | 'setup' | 'confirm' | 'verify';
 
-export default function PINEntryScreen() {
+export default function PasswordEntryScreen() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('loading');
-  const [pin, setPin] = useState('');
-  const [setupPin, setSetupPin] = useState('');
+  const [password, setPassword] = useState('');
+  const [setupPassword, setSetupPassword] = useState('');
   const [error, setError] = useState('');
   const [isShaking, setIsShaking] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
@@ -36,55 +36,52 @@ export default function PINEntryScreen() {
       });
   }, []);
 
-  useEffect(() => {
-    if (pin.length === 4 && !isChecking) {
-      handlePinComplete(pin);
-    }
-  }, [pin]);
-
   const triggerError = (msg: string) => {
     setError(msg);
     setIsShaking(true);
-    setPin('');
     setTimeout(() => {
       setIsShaking(false);
       setError('');
     }, 1500);
   };
 
-  const handlePinComplete = async (currentPin: string) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isChecking) return;
+    
     setIsChecking(true);
     setError('');
 
     try {
       if (mode === 'setup') {
-        setSetupPin(currentPin);
-        setPin('');
+        setSetupPassword(password);
+        setPassword('');
         setMode('confirm');
       } else if (mode === 'confirm') {
-        if (currentPin !== setupPin) {
-          triggerError('PINs do not match');
-          setSetupPin('');
+        if (password !== setupPassword) {
+          triggerError('Passwords do not match');
+          setSetupPassword('');
+          setPassword('');
           setMode('setup');
         } else {
           const res = await fetch('/api/pin/setup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin: currentPin })
+            body: JSON.stringify({ pin: password })
           });
           const data = await res.json();
           if (data.success) {
             sessionStorage.setItem('pin_authenticated', 'true');
             router.push('/dashboard');
           } else {
-            triggerError('Failed to setup PIN');
+            triggerError('Failed to setup password');
           }
         }
       } else if (mode === 'verify') {
         const res = await fetch('/api/pin/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: currentPin })
+          body: JSON.stringify({ pin: password })
         });
         const data = await res.json();
         
@@ -92,23 +89,14 @@ export default function PINEntryScreen() {
           sessionStorage.setItem('pin_authenticated', 'true');
           router.push('/dashboard');
         } else {
-          triggerError('Wrong PIN');
+          triggerError('Wrong password');
+          setPassword('');
         }
       }
     } catch (err) {
       triggerError('Network error');
     } finally {
       setIsChecking(false);
-    }
-  };
-
-  const handleKeyPress = (key: string) => {
-    if (isChecking || isShaking) return;
-    
-    if (key === 'backspace') {
-      setPin(prev => prev.slice(0, -1));
-    } else if (pin.length < 4) {
-      setPin(prev => prev + key);
     }
   };
 
@@ -125,7 +113,7 @@ export default function PINEntryScreen() {
 
   return (
     <main className="flex min-h-screen bg-gray-950 text-white flex-col items-center justify-center p-4 selection:bg-transparent">
-      <div className="w-full max-w-sm flex flex-col items-center gap-12">
+      <div className={`w-full max-w-sm flex flex-col items-center gap-8 ${isShaking ? 'animate-shake' : ''}`}>
         {/* Header */}
         <div className="flex flex-col items-center gap-3">
           <div className="p-3 bg-blue-500/10 rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.5)]">
@@ -133,59 +121,39 @@ export default function PINEntryScreen() {
           </div>
           <h1 className="text-2xl font-bold tracking-tight">CashAgent</h1>
           <p className="text-gray-400 text-sm font-medium h-5">
-            {mode === 'setup' && 'Create a new 4-digit PIN'}
-            {mode === 'confirm' && 'Confirm your new PIN'}
-            {mode === 'verify' && 'Enter your PIN to continue'}
+            {mode === 'setup' && 'Create a new master password'}
+            {mode === 'confirm' && 'Confirm your new password'}
+            {mode === 'verify' && 'Enter your password to continue'}
           </p>
         </div>
 
-        {/* PIN Dots */}
-        <div className={`flex gap-4 h-12 items-center ${isShaking ? 'animate-shake' : ''}`}>
-          {[0, 1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className={`w-4 h-4 rounded-full transition-all duration-300 ${
-                i < pin.length 
-                  ? 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)] scale-110' 
-                  : 'bg-gray-800'
-              }`}
+        {/* Form Container */}
+        <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <input
+              type="password"
+              autoFocus
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isChecking}
+              className="w-full bg-gray-900 border border-gray-800 rounded-xl py-3 px-4 text-center tracking-widest text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all font-medium text-lg"
+              placeholder="••••••••"
             />
-          ))}
-        </div>
+          </div>
 
-        {/* Error Message */}
-        <div className="h-6 flex items-center justify-center">
-          {error && <span className="text-red-400 text-sm font-medium animate-pulse">{error}</span>}
-        </div>
+          {/* Error Message */}
+          <div className="h-6 flex items-center justify-center">
+            {error && <span className="text-red-400 text-sm font-medium animate-pulse">{error}</span>}
+          </div>
 
-        {/* Keypad */}
-        <div className="grid grid-cols-3 gap-4 w-full px-6">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-            <button
-              key={num}
-              onClick={() => handleKeyPress(num.toString())}
-              disabled={isChecking || isShaking}
-              className="h-16 rounded-2xl bg-gray-900/50 hover:bg-gray-800 active:bg-gray-700 active:scale-95 transition-all text-2xl font-medium flex items-center justify-center border border-gray-800/50 outline-none"
-            >
-              {num}
-            </button>
-          ))}
-          <div /> {/* Empty space for bottom left */}
           <button
-            onClick={() => handleKeyPress('0')}
-            disabled={isChecking || isShaking}
-            className="h-16 rounded-2xl bg-gray-900/50 hover:bg-gray-800 active:bg-gray-700 active:scale-95 transition-all text-2xl font-medium flex items-center justify-center border border-gray-800/50 outline-none"
+            type="submit"
+            disabled={isChecking || !password.trim()}
+            className="w-full py-3.5 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-all transform active:scale-[0.98] outline-none disabled:opacity-50 disabled:pointer-events-none mt-2"
           >
-            0
+            {isChecking ? 'Verifying...' : 'Continue'}
           </button>
-          <button
-            onClick={() => handleKeyPress('backspace')}
-            disabled={isChecking || isShaking || pin.length === 0}
-            className="h-16 rounded-2xl bg-gray-900/50 hover:bg-gray-800 active:bg-gray-700 active:scale-95 transition-all text-xl font-medium flex items-center justify-center border border-gray-800/50 outline-none disabled:opacity-50"
-          >
-            <Delete className="w-6 h-6" />
-          </button>
-        </div>
+        </form>
       </div>
     </main>
   );

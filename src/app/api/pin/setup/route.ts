@@ -8,8 +8,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { pin } = body;
     
-    if (!pin || typeof pin !== 'string' || !/^\d{4}$/.test(pin)) {
-      return NextResponse.json({ error: 'PIN must be exactly 4 digits' }, { status: 400 });
+    if (!pin || typeof pin !== 'string' || pin.trim() === '') {
+      return NextResponse.json({ error: 'Password is required' }, { status: 400 });
     }
 
     const salt = await bcrypt.genSalt(10);
