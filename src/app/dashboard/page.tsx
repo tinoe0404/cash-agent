@@ -15,13 +15,16 @@ type Transaction = {
   description: string;
   category: string;
   is_voided: boolean;
+  is_owing: boolean;
   created_at: string;
 };
 
 type Stats = {
   total_deposited: number;
   total_withdrawn: number;
+  total_owing: number;
   current_balance: number;
+  potential_balance: number;
 };
 
 export default function Dashboard() {
@@ -29,13 +32,14 @@ export default function Dashboard() {
   const formRef = useRef<HTMLDivElement>(null);
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [stats, setStats] = useState<Stats>({ total_deposited: 0, total_withdrawn: 0, current_balance: 0 });
+  const [stats, setStats] = useState<Stats>({ total_deposited: 0, total_withdrawn: 0, total_owing: 0, current_balance: 0, potential_balance: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   const [showForm, setShowForm] = useState(false);
   const [type, setType] = useState<'deposit' | 'withdraw'>('deposit');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
+  const [isOwing, setIsOwing] = useState(false);
   const [error, setError] = useState('');
   const [globalError, setGlobalError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,7 +53,9 @@ export default function Dashboard() {
         setStats({
           total_deposited: data.total_deposited || 0,
           total_withdrawn: data.total_withdrawn || 0,
+          total_owing: data.total_owing || 0,
           current_balance: data.current_balance || 0,
+          potential_balance: data.potential_balance || 0,
         });
       } else {
         setGlobalError('Unable to reach the server. Please try again later.');
@@ -91,7 +97,7 @@ export default function Dashboard() {
       const res = await fetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, amount, description, category: 'Other' })
+        body: JSON.stringify({ type, amount, description, category: 'Other', is_owing: type === 'withdraw' ? isOwing : false })
       });
 
       if (!res.ok) {
@@ -101,6 +107,7 @@ export default function Dashboard() {
 
       setAmount('');
       setDescription('');
+      setIsOwing(false);
       setShowForm(false);
       await fetchData();
     } catch (err: any) {
@@ -297,7 +304,7 @@ export default function Dashboard() {
             position: 'relative',
             zIndex: 1,
           }}>
-            Current Balance
+            Real Balance
           </p>
           <p style={{
             fontSize: '36px',
@@ -310,10 +317,51 @@ export default function Dashboard() {
           }}>
             {formatCurrency(stats.current_balance)}
           </p>
+
+          <p style={{
+            fontSize: '13px',
+            fontWeight: 600,
+            color: 'rgba(255,255,255,0.7)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginTop: '16px',
+            marginBottom: '4px',
+            position: 'relative',
+            zIndex: 1,
+          }}>
+            Potential Balance
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <p style={{
+              fontSize: '24px',
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              color: 'rgba(255,255,255,0.9)',
+              position: 'relative',
+              zIndex: 1,
+              lineHeight: 1.1,
+            }}>
+              {formatCurrency(stats.potential_balance)}
+            </p>
+            {stats.total_owing > 0 && (
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                background: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: '6px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                position: 'relative',
+                zIndex: 1,
+              }}>+{formatCurrency(stats.total_owing)} owed</span>
+            )}
+          </div>
           {stats.current_balance < 0 && (
             <span style={{
               display: 'inline-block',
-              marginTop: '8px',
+              marginTop: '12px',
               fontSize: '11px',
               fontWeight: 700,
               background: 'rgba(239, 68, 68, 0.3)',
@@ -598,6 +646,46 @@ export default function Dashboard() {
                     }}
                   />
                 </div>
+
+                {type === 'withdraw' && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 4px',
+                  }}>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--foreground)' }}>Is this a loan?</span>
+                      <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)' }}>Mark as owing (will be returned)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsOwing(!isOwing)}
+                      style={{
+                        position: 'relative',
+                        width: '44px',
+                        height: '24px',
+                        borderRadius: '12px',
+                        background: isOwing ? '#6366f1' : 'rgba(255,255,255,0.1)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '2px',
+                      }}
+                    >
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        background: 'white',
+                        transform: isOwing ? 'translateX(20px)' : 'translateX(0)',
+                        transition: 'transform 0.2s cubic-bezier(0.4, 0.0, 0.2, 1)',
+                      }} />
+                    </button>
+                  </div>
+                )}
 
 
 

@@ -7,6 +7,7 @@ async function getBalanceStats() {
   const allTxs = await db.select().from(transactions);
   let total_deposited = 0;
   let total_withdrawn = 0;
+  let total_owing = 0;
   
   for (const t of allTxs) {
     if (!t.is_voided) {
@@ -14,12 +15,16 @@ async function getBalanceStats() {
         total_deposited += Number(t.amount);
       } else if (t.type === 'withdraw') {
         total_withdrawn += Number(t.amount);
+        if (t.is_owing) {
+          total_owing += Number(t.amount);
+        }
       }
     }
   }
   
   const current_balance = total_deposited - total_withdrawn;
-  return { total_deposited, total_withdrawn, current_balance };
+  const potential_balance = current_balance + total_owing;
+  return { total_deposited, total_withdrawn, total_owing, current_balance, potential_balance };
 }
 
 export async function GET() {
@@ -40,7 +45,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { type, amount, description, category } = body;
+    const { type, amount, description, category, is_owing } = body;
     
     if (type !== 'deposit' && type !== 'withdraw') {
       return NextResponse.json({ error: 'Invalid transaction type' }, { status: 400 });
@@ -52,10 +57,6 @@ export async function POST(req: Request) {
     
     if (!description || typeof description !== 'string' || description.trim() === '') {
       return NextResponse.json({ error: 'Description is required' }, { status: 400 });
-    }
-    
-    if (!category || typeof category !== 'string' || category.trim() === '') {
-      return NextResponse.json({ error: 'Category is required' }, { status: 400 });
     }
 
     if (type === 'withdraw') {
@@ -69,15 +70,16 @@ export async function POST(req: Request) {
       type,
       amount: amount.toString(),
       description: description.trim(),
-      category: category.trim(),
-      is_voided: false
+      category: (category || 'Other').trim(),
+      is_voided: false,
+      is_owing: type === 'withdraw' ? (is_owing || false) : false,
     }).returning();
     
-    const { current_balance } = await getBalanceStats();
+    const stats = await getBalanceStats();
 
     return NextResponse.json({
       transaction: newTransaction,
-      current_balance
+      ...stats,
     });
 
   } catch (error) {

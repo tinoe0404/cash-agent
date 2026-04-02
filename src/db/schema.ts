@@ -7,6 +7,7 @@ export const transactions = pgTable('transactions', {
   description: text('description').notNull(),
   category: text('category').notNull(),
   is_voided: boolean('is_voided').default(false),
+  is_owing: boolean('is_owing').default(false),
   created_at: timestamp('created_at').defaultNow(),
 });
 
