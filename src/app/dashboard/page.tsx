@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  LogOut, Trash2, ArrowDownCircle, ArrowUpCircle,
+  LogOut, ArrowDownCircle, ArrowUpCircle,
   Wallet, AlertCircle, Plus, X, TrendingUp,
-  TrendingDown, DollarSign, Loader2, ChevronDown
+  TrendingDown, DollarSign, Loader2
 } from 'lucide-react';
 
 type Transaction = {
@@ -24,17 +24,6 @@ type Stats = {
   current_balance: number;
 };
 
-const CATEGORIES = ['Food', 'Transport', 'Freelance', 'Business', 'Personal', 'Other'];
-
-const CATEGORY_EMOJI: Record<string, string> = {
-  Food: '🍔',
-  Transport: '🚗',
-  Freelance: '💻',
-  Business: '📊',
-  Personal: '👤',
-  Other: '📌',
-};
-
 export default function Dashboard() {
   const router = useRouter();
   const formRef = useRef<HTMLDivElement>(null);
@@ -47,7 +36,6 @@ export default function Dashboard() {
   const [type, setType] = useState<'deposit' | 'withdraw'>('deposit');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0]);
   const [error, setError] = useState('');
   const [globalError, setGlobalError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,7 +91,7 @@ export default function Dashboard() {
       const res = await fetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, amount, description, category })
+        body: JSON.stringify({ type, amount, description, category: 'Other' })
       });
 
       if (!res.ok) {
@@ -113,27 +101,12 @@ export default function Dashboard() {
 
       setAmount('');
       setDescription('');
-      setCategory(CATEGORIES[0]);
       setShowForm(false);
       await fetchData();
     } catch (err: any) {
       setError(err.message);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleVoid = async (id: number) => {
-    if (!window.confirm('Void this transaction?')) return;
-    try {
-      const res = await fetch(`/api/transactions/${id}/void`, { method: 'PATCH' });
-      if (res.ok) {
-        await fetchData();
-      } else {
-        setGlobalError('Failed to void transaction');
-      }
-    } catch {
-      setGlobalError('Network error');
     }
   };
 
@@ -626,54 +599,7 @@ export default function Dashboard() {
                   />
                 </div>
 
-                {/* Category */}
-                <div>
-                  <label style={{
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    marginBottom: '8px',
-                    display: 'block',
-                  }}>Category</label>
-                  <div style={{ position: 'relative' }}>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      style={{
-                        width: '100%',
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1.5px solid var(--surface-border)',
-                        borderRadius: '14px',
-                        padding: '16px',
-                        paddingRight: '44px',
-                        color: 'var(--foreground)',
-                        fontSize: '16px',
-                        fontWeight: 500,
-                        fontFamily: 'inherit',
-                        outline: 'none',
-                        appearance: 'none',
-                        WebkitAppearance: 'none',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {CATEGORIES.map(cat => (
-                        <option key={cat} value={cat}>{CATEGORY_EMOJI[cat]} {cat}</option>
-                      ))}
-                    </select>
-                    <ChevronDown style={{
-                      position: 'absolute',
-                      right: '16px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      width: 20,
-                      height: 20,
-                      color: 'var(--text-muted)',
-                      pointerEvents: 'none',
-                    }} />
-                  </div>
-                </div>
+
 
                 {/* Error */}
                 {error && (
@@ -813,7 +739,10 @@ export default function Dashboard() {
                           ? '1px solid rgba(16, 185, 129, 0.15)'
                           : '1px solid rgba(239, 68, 68, 0.15)',
                     }}>
-                      {CATEGORY_EMOJI[tx.category] || '📌'}
+                      {tx.type === 'deposit'
+                        ? <ArrowUpCircle style={{ width: 20, height: 20, color: tx.is_voided ? 'var(--text-muted)' : '#34d399' }} />
+                        : <ArrowDownCircle style={{ width: 20, height: 20, color: tx.is_voided ? 'var(--text-muted)' : '#f87171' }} />
+                      }
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -843,63 +772,27 @@ export default function Dashboard() {
                           }}>Voided</span>
                         )}
                       </div>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        marginTop: '3px',
-                      }}>
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
-                          {formatDate(tx.created_at)}
-                        </span>
-                        <span style={{ fontSize: '10px', color: 'rgba(107,114,128,0.4)' }}>•</span>
-                        <span style={{
-                          fontSize: '11px',
-                          fontWeight: 500,
-                          color: 'var(--text-muted)',
-                        }}>
-                          {tx.category}
-                        </span>
-                      </div>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500, marginTop: '3px' }}>
+                        {formatDate(tx.created_at)}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Right: amount + void */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                    <span style={{
-                      fontSize: '16px',
-                      fontWeight: 700,
-                      letterSpacing: '-0.01em',
-                      color: tx.is_voided
-                        ? 'var(--text-muted)'
-                        : tx.type === 'deposit'
-                          ? '#34d399'
-                          : '#f87171',
-                      textDecoration: tx.is_voided ? 'line-through' : 'none',
-                    }}>
-                      {tx.type === 'deposit' ? '+' : '-'}${Number(tx.amount).toFixed(2)}
-                    </span>
-                    {!tx.is_voided && (
-                      <button
-                        onClick={() => handleVoid(tx.id)}
-                        style={{
-                          padding: '8px',
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          borderRadius: '10px',
-                          color: 'var(--text-muted)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'all 0.2s',
-                        }}
-                        title="Void Transaction"
-                      >
-                        <Trash2 style={{ width: 16, height: 16 }} />
-                      </button>
-                    )}
-                  </div>
+                  {/* Right: amount */}
+                  <span style={{
+                    fontSize: '16px',
+                    fontWeight: 700,
+                    letterSpacing: '-0.01em',
+                    flexShrink: 0,
+                    color: tx.is_voided
+                      ? 'var(--text-muted)'
+                      : tx.type === 'deposit'
+                        ? '#34d399'
+                        : '#f87171',
+                    textDecoration: tx.is_voided ? 'line-through' : 'none',
+                  }}>
+                    {tx.type === 'deposit' ? '+' : '-'}${Number(tx.amount).toFixed(2)}
+                  </span>
                 </div>
               ))}
             </div>
