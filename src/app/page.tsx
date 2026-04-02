@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 type Mode = 'loading' | 'setup' | 'confirm' | 'verify';
 
@@ -14,9 +14,9 @@ export default function PasswordEntryScreen() {
   const [error, setError] = useState('');
   const [isShaking, setIsShaking] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    // Check if setup is required
     fetch('/api/pin/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -33,6 +33,7 @@ export default function PasswordEntryScreen() {
       .catch((err) => {
         console.error('Error checking setup status:', err);
         setError('Connection error');
+        setMode('verify');
       });
   }, []);
 
@@ -42,13 +43,13 @@ export default function PasswordEntryScreen() {
     setTimeout(() => {
       setIsShaking(false);
       setError('');
-    }, 1500);
+    }, 2000);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isChecking) return;
-    
+
     setIsChecking(true);
     setError('');
 
@@ -84,7 +85,7 @@ export default function PasswordEntryScreen() {
           body: JSON.stringify({ pin: password })
         });
         const data = await res.json();
-        
+
         if (data.success) {
           sessionStorage.setItem('pin_authenticated', 'true');
           router.push('/dashboard');
@@ -93,67 +94,278 @@ export default function PasswordEntryScreen() {
           setPassword('');
         }
       }
-    } catch (err) {
+    } catch {
       triggerError('Network error');
     } finally {
       setIsChecking(false);
     }
   };
 
+  const modeLabel = {
+    setup: 'Create a new master password',
+    confirm: 'Confirm your new password',
+    verify: 'Enter your password to continue',
+    loading: '',
+  };
+
   if (mode === 'loading') {
     return (
-      <main className="flex min-h-screen bg-gray-950 text-white flex-col items-center justify-center p-4">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <ShieldCheck className="w-12 h-12 text-blue-500" />
-          <h1 className="text-2xl font-semibold tracking-tight">CashAgent</h1>
+      <main
+        style={{
+          display: 'flex',
+          minHeight: '100dvh',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--background)',
+          padding: '24px',
+        }}
+      >
+        <div className="animate-fade-in-up" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <div className="animate-pulse-glow" style={{
+            padding: '16px',
+            borderRadius: '20px',
+            background: 'rgba(99, 102, 241, 0.08)',
+          }}>
+            <ShieldCheck style={{ width: 40, height: 40, color: 'var(--accent-light)' }} />
+          </div>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--foreground)' }}>
+            CashAgent
+          </h1>
+          <Loader2 className="animate-spin" style={{ width: 20, height: 20, color: 'var(--text-muted)' }} />
         </div>
       </main>
     );
   }
 
   return (
-    <main className="flex min-h-screen bg-gray-950 text-white flex-col items-center justify-center p-4 selection:bg-transparent">
-      <div className={`w-full max-w-sm flex flex-col items-center gap-8 ${isShaking ? 'animate-shake' : ''}`}>
-        {/* Header */}
-        <div className="flex flex-col items-center gap-3">
-          <div className="p-3 bg-blue-500/10 rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.5)]">
-            <ShieldCheck className="w-8 h-8 text-blue-500" />
+    <main
+      style={{
+        display: 'flex',
+        minHeight: '100dvh',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--background)',
+        padding: '24px',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Background gradient orbs */}
+      <div style={{
+        position: 'absolute',
+        top: '-20%',
+        left: '-10%',
+        width: '300px',
+        height: '300px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%)',
+        filter: 'blur(60px)',
+        pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'absolute',
+        bottom: '-15%',
+        right: '-10%',
+        width: '250px',
+        height: '250px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%)',
+        filter: 'blur(60px)',
+        pointerEvents: 'none',
+      }} />
+
+      <div
+        className={`animate-fade-in-up ${isShaking ? 'animate-shake' : ''}`}
+        style={{
+          width: '100%',
+          maxWidth: '400px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '36px',
+          position: 'relative',
+          zIndex: 1,
+        }}
+      >
+        {/* Logo & Title */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <div className="animate-pulse-glow" style={{
+            padding: '18px',
+            borderRadius: '22px',
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1))',
+            border: '1px solid rgba(99, 102, 241, 0.15)',
+          }}>
+            <ShieldCheck style={{ width: 36, height: 36, color: 'var(--accent-light)' }} />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">CashAgent</h1>
-          <p className="text-gray-400 text-sm font-medium h-5">
-            {mode === 'setup' && 'Create a new master password'}
-            {mode === 'confirm' && 'Confirm your new password'}
-            {mode === 'verify' && 'Enter your password to continue'}
-          </p>
+          <div style={{ textAlign: 'center' }}>
+            <h1 style={{
+              fontSize: '28px',
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              color: 'var(--foreground)',
+              marginBottom: '8px',
+            }}>
+              CashAgent
+            </h1>
+            <p style={{
+              fontSize: '15px',
+              fontWeight: 500,
+              color: 'var(--text-muted)',
+              minHeight: '22px',
+            }}>
+              {modeLabel[mode]}
+            </p>
+          </div>
         </div>
 
-        {/* Form Container */}
-        <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Password Input */}
+          <div style={{
+            position: 'relative',
+            width: '100%',
+          }}>
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               autoFocus
+              id="password-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isChecking}
-              className="w-full bg-gray-900 border border-gray-800 rounded-xl py-3 px-4 text-center tracking-widest text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all font-medium text-lg"
-              placeholder="••••••••"
+              placeholder="Enter password"
+              autoComplete="off"
+              style={{
+                width: '100%',
+                background: 'var(--surface)',
+                border: error
+                  ? '1.5px solid rgba(239, 68, 68, 0.5)'
+                  : '1.5px solid var(--surface-border)',
+                borderRadius: '16px',
+                padding: '18px 56px 18px 20px',
+                color: 'var(--foreground)',
+                fontSize: '17px',
+                fontWeight: 500,
+                fontFamily: 'inherit',
+                letterSpacing: showPassword ? '0' : '0.15em',
+                outline: 'none',
+                transition: 'all 0.2s ease',
+                WebkitAppearance: 'none',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'rgba(99, 102, 241, 0.5)';
+                e.target.style.boxShadow = '0 0 0 4px rgba(99, 102, 241, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = error ? 'rgba(239, 68, 68, 0.5)' : 'var(--surface-border)';
+                e.target.style.boxShadow = 'none';
+              }}
             />
+            {/* Show/Hide toggle */}
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              style={{
+                position: 'absolute',
+                right: '16px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '6px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-muted)',
+                transition: 'color 0.2s ease',
+              }}
+            >
+              {showPassword
+                ? <EyeOff style={{ width: 22, height: 22 }} />
+                : <Eye style={{ width: 22, height: 22 }} />
+              }
+            </button>
           </div>
 
           {/* Error Message */}
-          <div className="h-6 flex items-center justify-center">
-            {error && <span className="text-red-400 text-sm font-medium animate-pulse">{error}</span>}
+          <div style={{
+            minHeight: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.3s ease',
+          }}>
+            {error && (
+              <span style={{
+                color: '#f87171',
+                fontSize: '14px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}>
+                <span style={{ fontSize: '16px' }}>⚠</span>
+                {error}
+              </span>
+            )}
           </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
+            id="submit-button"
             disabled={isChecking || !password.trim()}
-            className="w-full py-3.5 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-all transform active:scale-[0.98] outline-none disabled:opacity-50 disabled:pointer-events-none mt-2"
+            style={{
+              width: '100%',
+              padding: '18px',
+              borderRadius: '16px',
+              fontWeight: 700,
+              fontSize: '16px',
+              fontFamily: 'inherit',
+              color: 'white',
+              background: isChecking || !password.trim()
+                ? 'rgba(99, 102, 241, 0.3)'
+                : 'linear-gradient(135deg, #6366f1, #7c3aed)',
+              border: 'none',
+              cursor: isChecking || !password.trim() ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: isChecking || !password.trim()
+                ? 'none'
+                : '0 4px 20px rgba(99, 102, 241, 0.3)',
+              letterSpacing: '0.01em',
+            }}
           >
-            {isChecking ? 'Verifying...' : 'Continue'}
+            {isChecking ? (
+              <>
+                <Loader2 className="animate-spin" style={{ width: 20, height: 20 }} />
+                Verifying...
+              </>
+            ) : (
+              mode === 'setup' ? 'Set Password' :
+              mode === 'confirm' ? 'Confirm Password' :
+              'Unlock'
+            )}
           </button>
         </form>
+
+        {/* Subtle footer */}
+        <p style={{
+          fontSize: '12px',
+          color: 'rgba(107, 114, 128, 0.5)',
+          fontWeight: 500,
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+          marginTop: '8px',
+        }}>
+          Secured locally
+        </p>
       </div>
     </main>
   );
