@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   LogOut, ArrowDownCircle, ArrowUpCircle,
   Wallet, AlertCircle, Plus, X, TrendingUp,
-  TrendingDown, DollarSign, Loader2
+  TrendingDown, DollarSign, Loader2, Edit2
 } from 'lucide-react';
 
 type Transaction = {
@@ -36,7 +36,25 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [type, setType] = useState<'deposit' | 'withdraw'>('deposit');
+
+  const handleOpenForm = (tx?: Transaction) => {
+    if (tx) {
+      setEditingId(tx.id);
+      setType(tx.type);
+      setAmount(tx.amount.toString());
+      setDescription(tx.description);
+      setIsOwing(tx.is_owing);
+    } else {
+      setEditingId(null);
+      setType('deposit');
+      setAmount('');
+      setDescription('');
+      setIsOwing(false);
+    }
+    setShowForm(true);
+  };
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [isOwing, setIsOwing] = useState(false);
@@ -94,8 +112,11 @@ export default function Dashboard() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/transactions', {
-        method: 'POST',
+      const url = editingId ? `/api/transactions/${editingId}` : '/api/transactions';
+      const method = editingId ? 'PUT' : 'POST';
+      
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, amount, description, category: 'Other', is_owing: type === 'withdraw' ? isOwing : false })
       });
@@ -475,7 +496,7 @@ export default function Dashboard() {
                 marginBottom: '20px',
               }}>
                 <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--foreground)' }}>
-                  New Transaction
+                  {editingId ? 'Edit Transaction' : 'New Transaction'}
                 </h2>
                 <button
                   onClick={() => setShowForm(false)}
@@ -738,7 +759,7 @@ export default function Dashboard() {
                   {isSubmitting ? (
                     <><Loader2 className="animate-spin" style={{ width: 20, height: 20 }} /> Processing...</>
                   ) : (
-                    `Submit ${type === 'deposit' ? 'Deposit' : 'Withdrawal'}`
+                    editingId ? 'Update Transaction' : `Submit ${type === 'deposit' ? 'Deposit' : 'Withdrawal'}`
                   )}
                 </button>
               </form>
@@ -866,21 +887,42 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Right: amount */}
-                  <span style={{
-                    fontSize: '16px',
-                    fontWeight: 700,
-                    letterSpacing: '-0.01em',
-                    flexShrink: 0,
-                    color: tx.is_voided
-                      ? 'var(--text-muted)'
-                      : tx.type === 'deposit'
-                        ? '#34d399'
-                        : '#f87171',
-                    textDecoration: tx.is_voided ? 'line-through' : 'none',
-                  }}>
-                    {tx.type === 'deposit' ? '+' : '-'}${Number(tx.amount).toFixed(2)}
-                  </span>
+                  {/* Right: amount and edit button */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{
+                      fontSize: '16px',
+                      fontWeight: 700,
+                      letterSpacing: '-0.01em',
+                      flexShrink: 0,
+                      color: tx.is_voided
+                        ? 'var(--text-muted)'
+                        : tx.type === 'deposit'
+                          ? '#34d399'
+                          : '#f87171',
+                      textDecoration: tx.is_voided ? 'line-through' : 'none',
+                    }}>
+                      {tx.type === 'deposit' ? '+' : '-'}${Number(tx.amount).toFixed(2)}
+                    </span>
+                    {!tx.is_voided && (
+                      <button
+                        onClick={() => handleOpenForm(tx)}
+                        style={{
+                          background: 'rgba(255,255,255,0.06)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '6px',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <Edit2 style={{ width: 14, height: 14 }} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -890,7 +932,7 @@ export default function Dashboard() {
 
       {/* ===== FLOATING ACTION BUTTON ===== */}
       <button
-        onClick={() => setShowForm(true)}
+        onClick={() => handleOpenForm()}
         style={{
           position: 'fixed',
           bottom: 'max(24px, env(safe-area-inset-bottom, 24px))',
